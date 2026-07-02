@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飲水日記</title>
+    
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- 引入 Canvas-Confetti 煙火特效套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* === 預設軍綠色系 === */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f1f2f0; 
+            color: #2b3a2a; 
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: background-color 0.5s ease;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(43, 58, 42, 0.08);
+            box-sizing: border-box;
+        }
+        h2, h3 { color: #3b4d3a; margin-top: 0; margin-bottom: 10px; transition: color 0.5s ease; }
+        
+        .dashboard {
+            background-color: #4b5340; 
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+        
+        .date-picker-group input {
+            padding: 5px 10px; border-radius: 6px; border: none; font-size: 1rem; color: #4b5340; font-weight: bold; margin-bottom: 15px;
+            background-color: #f1f2f0;
+            transition: color 0.5s ease;
+        }
+
+        /* 動態玻璃水杯 */
+        .glass-cup {
+            width: 120px;
+            height: 170px;
+            border: 5px solid #ffffff;
+            border-top: none;
+            border-radius: 0 0 25px 25px;
+            position: relative;
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            margin: 15px 0;
+        }
+        
+        .water-fluid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(180deg, #a3cedc 0%, #4b8191 100%);
+            transition: height 0.6s cubic-bezier(0.1, 0.8, 0.3, 1);
+        }
+
+        .water-fluid.full {
+            background: linear-gradient(180deg, #b9e3de 0%, #3d717e 100%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.1); }
+            100% { filter: brightness(1); }
+        }
+
+        .water-counter { font-size: 1.1rem; margin-top: 5px; font-weight: 300; }
+        .water-counter strong { font-size: 2.2rem; font-weight: bold; color: #d1e3dd; transition: color 0.5s ease; }
+
+        .section {
+            background: #f7f8f6; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #e3e6e1;
+            transition: background-color 0.5s ease, border-color 0.5s ease;
+        }
+
+        .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        
+        .quick-btn {
+            background-color: #616b56; 
+            color: white;
+            border: none;
+            padding: 12px 5px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.5s ease;
+        }
+        .quick-btn:active { background-color: #3b4d3a; }
+
+        .input-group { display: flex; gap: 10px; margin-top: 15px; }
+        .input-group input {
+            flex: 1; padding: 10px; border: 1px solid #c8cdc5; border-radius: 8px; font-size: 1rem; box-sizing: border-box;
+            background-color: white; color: #2b3a2a; transition: border-color 0.5s ease;
+        }
+        .input-group button {
+            width: 80px; background-color: #3b4d3a; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+            transition: background-color 0.5s ease;
+        }
+        .input-group button:active { background-color: #2b3a2a; }
+
+        .log-item {
+            background: #f7f8f6; padding: 12px; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #616b56;
+            transition: background-color 0.5s ease, border-left-color 0.5s ease;
+        }
+        .delete-btn { background: none; color: #cc4444; border: none; width: auto; padding: 0 5px; font-size: 1rem; cursor: pointer; }
+        
+        .target-setting { text-align: right; font-size: 0.85rem; color: #616b56; margin-bottom: 10px; transition: color 0.5s ease; }
+        .target-setting input {
+            width: 60px; padding: 2px 5px; text-align: center; border: 1px solid #c8cdc5; border-radius: 4px; margin-left: 5px;
+            color: #2b3a2a; font-weight: bold; transition: border-color 0.5s ease;
+        }
+
+        /* ========================================= */
+        /* 🌟 核心：達標後全面切換為亮綠色系樣式 🌟 */
+        /* ========================================= */
+        
+        body.success { background-color: #ebf6ed; color: #1e4620; } /* 頁面背景變淡淡的嫩綠 */
+        body.success h2, body.success h3 { color: #236727; }
+        
+        /* 大圖卡轉亮綠與發光 */
+        body.success .dashboard { background-color: #2b8a3e; box-shadow: 0 8px 24px rgba(43, 138, 62, 0.25); }
+        body.success .date-picker-group input { color: #2b8a3e; background-color: #ebf6ed; }
+        body.success .water-counter strong { color: #b2f2bb; } /* 計數器亮點變嫩綠 */
+
+        /* 下方區塊與輸入框 */
+        body.success .target-setting { color: #2b8a3e; }
+        body.success .target-setting input { border-color: #b2f2bb; color: #1e4620; }
+        body.success .section { background-color: #f4faf5; border-color: #d3eed7; }
+        body.success .input-group input { border-color: #b2f2bb; color: #1e4620; }
+
+        /* 🌟 快捷按鈕全面轉為亮綠色系 🌟 */
+        body.success .quick-btn { background-color: #40c057; }
+        body.success .quick-btn:active { background-color: #2b8a3e; }
+        body.success .input-group button { background-color: #2b8a3e; }
+        body.success .input-group button:active { background-color: #1e4620; }
+
+        /* 明細清單微調 */
+        body.success .log-item { background-color: #f4faf5; border-left-color: #40c057; }
+        body.success .log-item small { color: #40c057 !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 視覺儀表板 -->
+    <div class="dashboard">
+        <div class="date-picker-group">
+            <input type="date" id="current-date" onchange="changeDate()">
+        </div>
+        
+        <!-- 水杯本體 -->
+        <div class="glass-cup">
+            <div class="water-fluid" id="water-fluid-bar"></div>
+        </div>
+        
+        <div class="water-counter">
+            今日飲水：<strong id="total-water">0</strong> / <span id="target-water-text">2500</span> ml
+        </div>
+    </div>
+
+    <!-- 設定每日目標 -->
+    <div class="target-setting">
+        <label>每日目標量(ml):</label>
+        <input type="number" id="target-goal" value="2500" step="100" onchange="updateTargetGoal()">
+    </div>
+
+    <!-- 區塊一：快捷加水 -->
+    <div class="section">
+        <h3>💧 快捷喝水紀錄</h3>
+        <div class="quick-grid">
+            <button class="quick-btn" onclick="addWater(250, '馬克杯')"><span>🥛</span>250 ml<br><small>馬克杯</small></button>
+            <button class="quick-btn" onclick="addWater(600, '超商純水')"><span>🍾</span>600 ml<br><small>普通水壺</small></button>
+            <button class="quick-btn" onclick="addWater(3000, '大水壺')"><span>🛡️</span>3000 ml<br><small>大水壺</small></button>
+        </div>
+
+        <!-- 自訂容量輸入 -->
+        <div class="input-group">
+            <input type="number" id="custom-water" placeholder="輸入自訂毫升數 (ml)" min="1">
+            <button onclick="addCustomWater()">新增</button>
+        </div>
+    </div>
+
+    <!-- 區塊二：今日飲水時間軸 -->
+    <div class="log-list">
+        <h3>📅 飲水明細</h3>
+        <div id="logs-container"></div>
+    </div>
+</div>
+
+<script>
+    let selectedDate = "";
+    let waterLogs = {};
+    let dailyTarget = 2500;
+    let hasFiredConfetti = false;
+
+    window.onload = function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('current-date').value = today;
+        selectedDate = today;
+
+        if (localStorage.getItem('my_water_logs_v1')) {
+            waterLogs = JSON.parse(localStorage.getItem('my_water_logs_v1'));
+        }
+        if (localStorage.getItem('my_water_target_goal')) {
+            dailyTarget = parseInt(localStorage.getItem('my_water_target_goal')) || 2500;
+            document.getElementById('target-goal').value = dailyTarget;
+        }
+
+        updateUI();
+    }
+
+    function changeDate() {
+        selectedDate = document.getElementById('current-date').value;
+        hasFiredConfetti = false;
+        updateUI();
+    }
+
+    function updateTargetGoal() {
+        const val = parseInt(document.getElementById('target-goal').value);
+        if (val && val > 0) {
+            dailyTarget = val;
+            localStorage.setItem('my_water_target_goal', dailyTarget);
+            hasFiredConfetti = false;
+            updateUI();
+        }
+    }
+
+    function addWater(amount, typeName) {
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        const newLog = {
+            id: Date.now(),
+            time: timeStr,
+            type: typeName,
+            amount: amount
+        };
+
+        if (!waterLogs[selectedDate]) waterLogs[selectedDate] = [];
+        waterLogs[selectedDate].push(newLog);
+        localStorage.setItem('my_water_logs_v1', JSON.stringify(waterLogs));
+        updateUI();
+    }
+
+    function addCustomWater() {
+        const input = document.getElementById('custom-water');
+        const amount = parseInt(input.value);
+        if (!amount || amount <= 0) { alert('請輸入正確的飲水量！'); return; }
+        addWater(amount, '自訂飲水');
+        input.value = '';
+    }
+
+    function deleteLog(id) {
+        if (waterLogs[selectedDate]) {
+            waterLogs[selectedDate] = waterLogs[selectedDate].filter(log => log.id !== id);
+            localStorage.setItem('my_water_logs_v1', JSON.stringify(waterLogs));
+            
+            const currentLogs = waterLogs[selectedDate] || [];
+            let total = currentLogs.reduce((sum, log) => sum + log.amount, 0);
+            if (total < dailyTarget) {
+                hasFiredConfetti = false;
+            }
+            
+            updateUI();
+        }
+    }
+
+    function triggerCelebration() {
+        confetti({ particleCount: 100, spread: 70, origin: { x: 0.1, y: 0.6 } });
+        setTimeout(() => { confetti({ particleCount: 100, spread: 70, origin: { x: 0.9, y: 0.6 } }); }, 200);
+        setTimeout(() => { confetti({ particleCount: 50, angle: 90, spread: 100, origin: { x: 0.5, y: 0.8 } }); }, 400);
+    }
+
+    function updateUI() {
+        const container = document.getElementById('logs-container');
+        container.innerHTML = '';
+        
+        let total = 0;
+        const currentLogs = waterLogs[selectedDate] || [];
+        const sortedLogs = [...currentLogs].reverse();
+
+        sortedLogs.forEach((log) => {
+            total += log.amount;
+            
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            div.innerHTML = `
+                <div>
+                    <strong>💧 ${log.amount} ml</strong>
+                    <small style="margin-left: 8px;">(${log.type})</small>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="color: #666; font-size: 0.85rem;">${log.time}</span>
+                    <button class="delete-btn" onclick="deleteLog(${log.id})">❌</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        document.getElementById('total-water').innerText = total;
+        document.getElementById('target-water-text').innerText = dailyTarget;
+
+        let progressPercent = (total / dailyTarget) * 100;
+        if (progressPercent > 100) progressPercent = 100;
+
+        const fluid = document.getElementById('water-fluid-bar');
+        fluid.style.height = `${progressPercent}%`;
+
+        // 🌟 核心控制：利用 body 樣式切換，讓整體元件集體換裝 🌟
+        if (progressPercent >= 100) {
+            fluid.classList.add('full');
+            document.body.classList.add('success'); // 給最外層 body 加上 .success
+            
+            if (!hasFiredConfetti) {
+                triggerCelebration();
+                hasFiredConfetti = true;
+            }
+        } else {
+            fluid.classList.remove('full');
+            document.body.classList.remove('success'); // 未達標時變回預設軍綠
+        }
+    }
+</script>
+
+</body>
+</html>
