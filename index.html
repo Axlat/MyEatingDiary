@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的減肥日記</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f7f4;
+            color: #333;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        h2, h3 { color: #4a694a; margin-top: 0; margin-bottom: 10px; }
+        
+        /* 儀表板與日曆 */
+        .dashboard {
+            background-color: #539355;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .dashboard h1 { margin: 10px 0 0 0; font-size: 2rem; }
+        
+        .date-picker-group {
+            display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;
+        }
+        .date-picker-group input {
+            padding: 5px 10px; border-radius: 6px; border: none; font-size: 1rem; color: #4a694c; font-weight: bold;
+        }
+
+        .section {
+            background: #f8faf8; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eef2ee;
+        }
+        
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #666; }
+        .input-group input {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem;
+        }
+        
+        .row { display: flex; gap: 10px; }
+        .row .input-group { flex: 1; }
+
+        button {
+            width: 100%; padding: 12px; background-color: #4a694c; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: bold;
+        }
+        button:active { background-color: #233b22; }
+        
+        .btn-secondary {
+            background-color: #a7c9c5; color: #223b26; margin-top: 8px; padding: 10px; font-size: 0.9rem;
+        }
+
+        /* 常用食物佈局優化 */
+        /* 常用食物佈局優化 */
+        .preset-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .preset-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background-color: #e2e9e3; color: #4a694d; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; font-weight: 500;
+            white-space: nowrap; /* 🌟 加上這行：強制文字跟叉叉待在同一行，不准換行 🌟 */
+        }
+        .preset-badge:hover { background-color: #d1dcd3; }
+        .preset-del {
+            color: #aaa; font-size: 1rem; border: none; background: none; cursor: pointer; padding: 0 2px; font-weight: bold; line-height: 1;
+        }
+        .preset-del:hover { color: #e63946; }
+
+        .log-list { margin-top: 15px; margin-bottom: 25px; }
+        .log-item {
+            background: #f9faf9; padding: 12px; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #989a8c;
+        }
+        .delete-btn {
+            background: none; color: #e63946; border: none; width: auto; padding: 0 5px; font-size: 1rem; cursor: pointer;
+        }
+
+        /* 底部點按式分頁區 */
+        .tab-wrapper {
+            margin-top: 20px; border-top: 2px dashed #e2e9e3; padding-top: 20px;
+        }
+        .tab-buttons {
+            display: flex; gap: 10px; margin-bottom: 12px;
+        }
+        .tab-btn {
+            flex: 1; padding: 10px; background-color: #e2e9e4; color: #4a694d; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;
+        }
+        .tab-btn.active {
+            background-color: #4a694c; color: white;
+        }
+        
+        .slide-card {
+            display: none; /* 預設隱藏，由 JS 控制顯示 */
+            box-sizing: border-box; background: #4a694c; color: white; padding: 18px; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .slide-card.active { display: block; } /* 啟用時顯示 */
+        .slide-card.sport-day { background: #4a694c; }
+        .slide-card h4 { margin: 0 0 12px 0; font-size: 1.1rem; }
+        
+        .quota-row {
+            display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        .quota-row:last-child { border: none; margin-bottom: 0; padding-bottom: 0; }
+        .remaining { font-weight: bold; color: #e1f2ed; }
+        .over-quota { color: #ffb7b2 !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 儀表板 -->
+    <div class="dashboard">
+        <div class="date-picker-group">
+            <label for="current-date" style="font-size:0.9rem;">選擇日期：</label>
+            <input type="date" id="current-date" onchange="changeDate()">
+        </div>
+        <div>該日已攝取熱量</div>
+        <h1><span id="total-cal">0</span> kcal</h1>
+    </div>
+
+    <!-- 區塊一：常用食物 -->
+    <div class="section">
+        <h3>🌟 我的常用食物 (點擊自動填寫)</h3>
+        <div class="preset-container" id="preset-zone"></div>
+    </div>
+
+    <!-- 區塊二：飲食輸入表單 -->
+    <div class="section">
+        <h3>📝 新增飲食紀錄</h3>
+        <div class="input-group">
+            <label>食物名稱</label>
+            <input type="text" id="food-name">
+        </div>
+        
+        <div class="input-group">
+            <label>自訂熱量 (kcal) <small style="color:#888;">(選填)</small></label>
+            <input type="number" id="custom-cal">
+        </div>
+
+        <p style="text-align: center; margin: 5px 0; color: #aaa; font-size: 0.8rem;">─ 填寫單份營養素 ─</p>
+
+        <div class="row">
+            <div class="input-group"><label>蛋白質 (g)</label><input type="number" id="p-gram" value="0"></div>
+            <div class="input-group"><label>脂肪 (g)</label><input type="number" id="f-gram" value="0"></div>
+            <div class="input-group"><label>碳水化合物 (g)</label><input type="number" id="c-gram" value="0"></div>
+        </div>
+
+        <!-- 修正點：下拉選單改為自由輸入數字框 -->
+        <div class="input-group" style="margin-top: 10px;">
+            <label>吃了幾份？</label>
+            <input type="number" id="food-portions" value="1" step="0.1" min="0.1">
+        </div>
+
+        <button onclick="addLog()">新增至該日紀錄</button>
+        <button class="btn-secondary" onclick="saveToPreset()">⭐ 將此食物加入常用清單</button>
+    </div>
+
+    <!-- 區塊三：飲食明細 -->
+    <div class="log-list">
+        <h3>📅 飲食明細</h3>
+        <div id="logs-container"></div>
+    </div>
+
+    <!-- 修正點：底部切換改為按鈕點按切換 -->
+    <div class="tab-wrapper">
+        <div class="tab-buttons">
+            <button class="tab-btn active" id="tab-normal" onclick="switchTab('normal')">🏠 正常天額度</button>
+            <button class="tab-btn" id="tab-sport" onclick="switchTab('sport')">💪 運動天額度</button>
+        </div>
+        
+        <!-- 正常天字卡 -->
+        <div class="slide-card active" id="card-normal">
+            <h4><span>🏠 正常天剩餘額度</span></h4>
+            <div class="quota-row"><span>總熱量：</span><span id="normal-cal-status">0 / 1400 kcal</span></div>
+            <div class="quota-row"><span>蛋白質 (P)：</span><span id="normal-p-status">0 / 140g</span></div>
+            <div class="quota-row"><span>脂肪 (F)：</span><span id="normal-f-status">0 / 39g</span></div>
+            <div class="quota-row"><span>碳水化合物 (C)：</span><span id="normal-c-status">0 / 123g</span></div>
+        </div>
+
+        <!-- 運動天字卡 -->
+        <div class="slide-card sport-day" id="card-sport">
+            <h4><span>💪 運動天剩餘額度</span></h4>
+            <div class="quota-row"><span>總熱量：</span><span id="sport-cal-status">0 / 1600 kcal</span></div>
+            <div class="quota-row"><span>蛋白質 (P)：</span><span id="sport-p-status">0 / 160g</span></div>
+            <div class="quota-row"><span>脂肪 (F)：</span><span id="sport-f-status">0 / 44g</span></div>
+            <div class="quota-row"><span>碳水化合物 (C)：</span><span id="sport-c-status">0 / 140g</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const GOALS = {
+        normal: { cal: 1400, p: 140, f: 39, c: 123 },
+        sport:  { cal: 1600, p: 160, f: 44, c: 140 }
+    };
+
+    let selectedDate = "";
+    let allDailyLogs = {};
+    let customPresets = [
+        { name: "茶葉蛋", cal: 77, p: 7, f: 5, c: 1 },
+        { name: "無糖豆漿", cal: 120, p: 10, f: 5, c: 4 }
+    ];
+
+    window.onload = function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('current-date').value = today;
+        selectedDate = today;
+
+        if (localStorage.getItem('my_calendar_calorie_logs')) {
+            allDailyLogs = JSON.parse(localStorage.getItem('my_calendar_calorie_logs'));
+        }
+        if (localStorage.getItem('my_food_presets_v4')) {
+            customPresets = JSON.parse(localStorage.getItem('my_food_presets_v4'));
+        }
+
+        renderPresets();
+        updateUI();
+    }
+
+    function changeDate() {
+        selectedDate = document.getElementById('current-date').value;
+        updateUI();
+    }
+
+    // 點擊切換分頁標籤
+    function switchTab(type) {
+        // 切換按鈕亮起狀態
+        document.getElementById('tab-normal').classList.remove('active');
+        document.getElementById('tab-sport').classList.remove('active');
+        document.getElementById(`tab-${type}`).classList.add('active');
+
+        // 切換資料卡片顯示
+        document.getElementById('card-normal').classList.remove('active');
+        document.getElementById('card-sport').classList.remove('active');
+        document.getElementById(`card-${type}`).classList.add('active');
+    }
+
+    // 渲染常用食物
+    function renderPresets() {
+        const zone = document.getElementById('preset-zone');
+        zone.innerHTML = '';
+        customPresets.forEach((item, index) => {
+            const badge = document.createElement('div');
+            badge.className = 'preset-badge';
+            
+            // 內置文字節點
+            const textSpan = document.createElement('span');
+            textSpan.innerText = `${item.name} (${item.cal}卡)`;
+            badge.appendChild(textSpan);
+            
+            // 點擊文字區填入資料
+            textSpan.onclick = function() {
+                document.getElementById('food-name').value = item.name;
+                document.getElementById('custom-cal').value = item.cal || "";
+                document.getElementById('p-gram').value = item.p || 0;
+                document.getElementById('f-gram').value = item.f || 0;
+                document.getElementById('c-gram').value = item.c || 0;
+            };
+
+            // 獨立的叉叉按鈕，排在文字右邊
+            const delBtn = document.createElement('button');
+            delBtn.className = 'preset-del';
+            delBtn.innerText = '×';
+            delBtn.onclick = function(e) {
+                e.stopPropagation(); // 防止點擊叉叉時也觸發填入資料
+                deletePreset(index);
+            };
+
+            badge.appendChild(delBtn);
+            zone.appendChild(badge);
+        });
+    }
+
+    function deletePreset(index) {
+        if(confirm(`確定要刪除常用食物「${customPresets[index].name}」嗎？`)) {
+            customPresets.splice(index, 1);
+            localStorage.setItem('my_food_presets_v4', JSON.stringify(customPresets));
+            renderPresets();
+        }
+    }
+
+    function saveToPreset() {
+        const name = document.getElementById('food-name').value.trim();
+        if (!name) { alert('請先輸入食物名稱！'); return; }
+
+        const customCalRaw = document.getElementById('custom-cal').value;
+        const p = parseFloat(document.getElementById('p-gram').value) || 0;
+        const f = parseFloat(document.getElementById('f-gram').value) || 0;
+        const c = parseFloat(document.getElementById('c-gram').value) || 0;
+
+        let cal = 0;
+        if (customCalRaw !== "") {
+            cal = Math.round(parseFloat(customCalRaw));
+        } else {
+            cal = Math.round((c * 4) + (p * 4) + (f * 9));
+        }
+
+        if (customPresets.some(item => item.name.toLowerCase() === name.toLowerCase())) {
+            alert('常用清單中已有同名食物囉！'); return;
+        }
+
+        customPresets.push({ name, cal, p, f, c });
+        localStorage.setItem('my_food_presets_v4', JSON.stringify(customPresets));
+        renderPresets();
+    }
+
+    function addLog() {
+        const name = document.getElementById('food-name').value.trim() || '未命名食物';
+        const customCalRaw = document.getElementById('custom-cal').value;
+        const p = parseFloat(document.getElementById('p-gram').value) || 0;
+        const f = parseFloat(document.getElementById('f-gram').value) || 0;
+        const c = parseFloat(document.getElementById('c-gram').value) || 0;
+        const portion = parseFloat(document.getElementById('food-portions').value) || 1;
+
+        let singleCal = 0;
+        if (customCalRaw !== "") {
+            singleCal = parseFloat(customCalRaw);
+        } else {
+            singleCal = (c * 4) + (p * 4) + (f * 9);
+        }
+
+        const finalCal = Math.round(singleCal * portion);
+        const finalP = Number((p * portion).toFixed(1));
+        const finalF = Number((f * portion).toFixed(1));
+        const finalC = Number((c * portion).toFixed(1));
+
+        const newLog = {
+            id: Date.now(),
+            name: `${name} (x${portion}份)`,
+            p: finalP, f: finalF, c: finalC, cal: finalCal
+        };
+
+        if (!allDailyLogs[selectedDate]) allDailyLogs[selectedDate] = [];
+        allDailyLogs[selectedDate].push(newLog);
+        localStorage.setItem('my_calendar_calorie_logs', JSON.stringify(allDailyLogs));
+
+        // 重設輸入
+        document.getElementById('food-name').value = '';
+        document.getElementById('custom-cal').value = '';
+        document.getElementById('p-gram').value = 0;
+        document.getElementById('f-gram').value = 0;
+        document.getElementById('c-gram').value = 0;
+        document.getElementById('food-portions').value = "1";
+
+        updateUI();
+    }
+
+    function deleteLog(id) {
+        if (allDailyLogs[selectedDate]) {
+            allDailyLogs[selectedDate] = allDailyLogs[selectedDate].filter(log => log.id !== id);
+            localStorage.setItem('my_calendar_calorie_logs', JSON.stringify(allDailyLogs));
+            updateUI();
+        }
+    }
+
+    function updateUI() {
+        const container = document.getElementById('logs-container');
+        container.innerHTML = '';
+        
+        let totalCal = 0, totalP = 0, totalF = 0, totalC = 0;
+        const currentLogs = allDailyLogs[selectedDate] || [];
+
+        currentLogs.forEach((log) => {
+            totalCal += log.cal;
+            totalP += log.p;
+            totalF += log.f;
+            totalC += log.c;
+            
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            div.innerHTML = `
+                <div>
+                    <strong>${log.name}</strong> <br>
+                    <small style="color:#666;">P: ${log.p}g | F: ${log.f}g | C: ${log.c}g</small>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="color: #4a4e69; font-weight:bold;">${log.cal} kcal</span>
+                    <button class="delete-btn" onclick="deleteLog(${log.id})">❌</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        document.getElementById('total-cal').innerText = totalCal;
+
+        updateCardQuota('normal', totalCal, totalP, totalF, totalC);
+        updateCardQuota('sport', totalCal, totalP, totalF, totalC);
+    }
+
+    function updateCardQuota(type, eatenCal, eatenP, eatenF, eatenC) {
+        const goal = GOALS[type];
+        
+        const remCal = goal.cal - eatenCal;
+        const remP = Number((goal.p - eatenP).toFixed(1));
+        const remF = Number((goal.f - eatenF).toFixed(1));
+        const remC = Number((goal.c - eatenC).toFixed(1));
+
+        const calElement = document.getElementById(`${type}-cal-status`);
+        const pElement = document.getElementById(`${type}-p-status`);
+        const fElement = document.getElementById(`${type}-f-status`);
+        const cElement = document.getElementById(`${type}-c-status`);
+
+        // 1. 熱量顏色更新
+        if (remCal >= 0) {
+            calElement.innerHTML = `${eatenCal} / ${goal.cal} kcal <span class="remaining">(剩 ${remCal})</span>`;
+            calElement.className = ""; // 清空紅字樣式
+        } else {
+            calElement.innerHTML = `${eatenCal} / ${goal.cal} kcal <span class="remaining over-quota">(爆 ${Math.abs(remCal)}!)</span>`;
+            calElement.className = "over-quota";
+        }
+
+        // 2. 渲染三大營養素文字內容
+        pElement.innerHTML = `${eatenP.toFixed(1)} / ${goal.p}g <span style="font-size:0.8rem; opacity:0.8;">(剩 ${remP}g)</span>`;
+        fElement.innerHTML = `${eatenF.toFixed(1)} / ${goal.f}g <span style="font-size:0.8rem; opacity:0.8;">(剩 ${remF}g)</span>`;
+        cElement.innerHTML = `${eatenC.toFixed(1)} / ${goal.c}g <span style="font-size:0.8rem; opacity:0.8;">(剩 ${remC}g)</span>`;
+        
+        // 3. 嚴格檢查數值，決定是否加上紅字類別（低於 0 就加，高於等於 0 就移除）
+        if (remP < 0) pElement.className = "over-quota"; else pElement.className = "";
+        if (remF < 0) fElement.className = "over-quota"; else fElement.className = "";
+        if (remC < 0) cElement.className = "over-quota"; else cElement.className = "";
+    }
+</script>
+
+</body>
+</html>
